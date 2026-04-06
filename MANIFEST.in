@@ -1,0 +1,8 @@
+include README.md
+include LICENSE
+include pyproject.toml
+recursive-include src/rag_memory *.py
+recursive-include src/rag_memory/core *.py
+recursive-include src/rag_memory/tools *.py
+recursive-include src/rag_memory/scripts *.py
+recursive-include tests *.py
