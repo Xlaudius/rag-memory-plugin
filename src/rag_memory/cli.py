@@ -13,7 +13,7 @@ Example
 .. code-block:: bash
 
     $ rag-memory doctor
-    ✓ Database: /home/user/.hermes/plugins/rag-memory/rag_memory.db
+    ✓ Database: /home/user/.hermes/plugins/rag-memory/rag_core.db
     ✓ Documents: 168
     ✓ Embeddings: 168
     ✓ Mode: hybrid
@@ -51,7 +51,7 @@ def doctor() -> None:
 
         hermes_home = Path.home() / ".hermes"
         data_dir = hermes_home / "plugins" / "rag-memory"
-        db_path = data_dir / "rag_memory.db"
+        db_path = data_dir / "rag_core.db"
 
         console.print(f"[cyan]Database:[/cyan] {db_path}")
         console.print(f"[cyan]Status:[/cyan] ", end="")
@@ -94,7 +94,7 @@ def search(query: str, namespace: str | None, limit: int) -> None:
 
         hermes_home = Path.home() / ".hermes"
         data_dir = hermes_home / "plugins" / "rag-memory"
-        db_path = data_dir / "rag_memory.db"
+        db_path = data_dir / "rag_core.db"
 
         if not db_path.exists():
             console.print("[red]✗ Database not found[/red]")
@@ -133,7 +133,7 @@ def migrate_from_legacy() -> None:
     legacy_db = Path.home() / "rag-system" / "rag_data.db"
     hermes_home = Path.home() / ".hermes"
     data_dir = hermes_home / "plugins" / "rag-memory"
-    new_db = data_dir / "rag_memory.db"
+    new_db = data_dir / "rag_core.db"
 
     if not legacy_db.exists():
         console.print("[yellow]✗ Legacy database not found[/yellow]")
@@ -179,7 +179,7 @@ def export(output: Path, namespace: str | None) -> None:
 
         hermes_home = Path.home() / ".hermes"
         data_dir = hermes_home / "plugins" / "rag-memory"
-        db_path = data_dir / "rag_memory.db"
+        db_path = data_dir / "rag_core.db"
 
         if not db_path.exists():
             console.print("[red]✗ Database not found[/red]")
@@ -210,7 +210,7 @@ def import_data(input: Path) -> None:
 
         hermes_home = Path.home() / ".hermes"
         data_dir = hermes_home / "plugins" / "rag-memory"
-        db_path = data_dir / "rag_memory.db"
+        db_path = data_dir / "rag_core.db"
 
         # Initialize if needed
         rag = RAGCore(str(db_path))
