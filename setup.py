@@ -1,12 +1,17 @@
 from setuptools import setup, find_packages
+import os
+
+# Read README for long description
+with open("README.md", "r", encoding="utf-8") as fh:
+    long_description = fh.read()
 
 setup(
-    name="rag-memory-plugin",
+    name="rag-memory-plugin",  # PyPI will normalize to rag-memory-plugin
     version="1.0.0",
     packages=find_packages(where="src"),
     package_dir={"": "src"},
     description="Production-grade RAG memory system for Hermes Agent with hybrid TF-IDF + Neural retrieval, auto-capture, and zero-configuration setup",
-    long_description=open("README.md").read(),
+    long_description=long_description,
     long_description_content_type="text/markdown",
     author="Clawford Orji",
     python_requires=">=3.10",
@@ -53,5 +58,5 @@ setup(
         ],
     },
     include_package_data=True,
-    package_data={"": ["LICENSE"]},
+    zip_safe=False,
 )
