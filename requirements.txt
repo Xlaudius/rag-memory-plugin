@@ -1,0 +1,28 @@
+# Core dependencies
+click>=8.0
+rich>=13.0
+pydantic>=2.0
+
+# Neural search (optional)
+sentence-transformers>=2.0.0
+
+# Vector search (optional)
+sqlite-vec>=0.1.0
+
+# Development dependencies
+pytest>=8.0.0
+pytest-cov>=4.0.0
+pytest-benchmark>=4.0.0
+pytest-xdist>=3.0.0
+
+# Code quality
+ruff>=0.4.0
+black>=24.0.0
+isort>=5.13.0
+mypy>=1.8.0
+bandit>=1.7.0
+pip-audit>=2.7.0
+pipdeptree>=2.13.0
+
+# Documentation
+docutils>=0.20

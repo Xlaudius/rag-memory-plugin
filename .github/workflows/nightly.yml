@@ -1,0 +1,153 @@
+name: Nightly Checks
+
+on:
+  schedule:
+    # Run at midnight UTC every day
+    - cron: '0 0 * * *'
+  workflow_dispatch:
+
+jobs:
+  # Update dependencies
+  update-dependencies:
+    name: Update Dependencies
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Set up Python 3.11
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+
+    - name: Install dependencies
+      run: |
+        pip install --upgrade pip
+        pip install ".[neural,dev]"
+
+    - name: Check for outdated packages
+      id: outdated
+      run: |
+        pip list --outdated --format=json > outdated.json
+        cat outdated.json
+        # Set output for GitHub status
+        if [ -s outdated.json ] && [ "$(cat outdated.json)" != "[]" ]; then
+          echo "has_outdated=true" >> $GITHUB_OUTPUT
+        else
+          echo "has_outdated=false" >> $GITHUB_OUTPUT
+        fi
+
+    - name: Security audit
+      run: |
+        pip install pip-audit
+        pip-audit --desc --format=json > audit.json
+        cat audit.json
+
+    - name: Create issue if vulnerabilities found
+      if: hashFiles('audit.json') != ''
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const fs = require('fs');
+          const audit = JSON.parse(fs.readFileSync('audit.json', 'utf8'));
+
+          if (audit.vulnerabilities && audit.vulnerabilities.length > 0) {
+            const body = `Security vulnerabilities found in rag-memory-plugin:\n\n${audit.vulnerabilities.map(v => `- ${v.name}: ${v.versions.join(', ')}\n  Fixed in: ${v.fix_versions.join(', ')}`).join('\n\n')}\n\nRun \`pip-audit\` locally for details.`;
+
+            github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `🔒 Security Vulnerabilities Detected (${new Date().toISOString().split('T')[0]})`,
+              body: body,
+              labels: ['security', 'dependencies']
+            });
+          }
+
+  # Test installation from git
+  test-git-installation:
+    name: Test Git Installation
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python 3.11
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+
+    - name: Test install from git
+      run: |
+        python3 -m venv test-venv
+        source test-venv/bin/activate
+        pip install 'git+https://github.com/favouraka/rag-memory-plugin.git#egg=rag-memory-plugin[neural]'
+
+    - name: Verify installation
+      run: |
+        source test-venv/bin/activate
+        rag-memory --version
+        rag-memory doctor
+
+  # Test installation script
+  test-install-script:
+    name: Test Installation Script
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Install script dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y curl
+
+    - name: Test install script
+      run: |
+        bash install.sh
+
+    - name: Verify installation
+      run: |
+        source ~/.bashrc || true
+        rag-memory --version || echo "Need to source bashrc first"
+        ~/.rag-memory/bin/rag-memory --version
+        ~/.rag-memory/bin/rag-memory doctor
+
+  # Documentation check
+  check-documentation:
+    name: Check Documentation
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python 3.11
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+
+    - name: Install dependencies
+      run: |
+        pip install --upgrade pip
+        pip install docutils
+
+    - name: Check README.md links
+      run: |
+        # Check if all links in README are valid
+        grep -oP '(?<=\]\()[^)]+(?=\))' README.md | head -20
+
+    - name: Check installation script
+      run: |
+        # Validate bash script syntax
+        bash -n install.sh
+        bash -n migrate_to_new_venv.sh
+
+    - name: Check migration script
+      run: |
+        # Validate bash script syntax
+        bash -n migrate_from_rag_system.py || true

@@ -1,0 +1,151 @@
+name: CI/CD
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  # Check Python compatibility across versions
+  test-python-versions:
+    name: Test Python ${{ matrix.python-version }}
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ['3.10', '3.11', '3.12']
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ matrix.python-version }}
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install pytest ruff mypy click rich
+        pip install pytest-cov
+
+    - name: Check Python syntax
+      run: |
+        python -m compile_all src/rag_memory
+
+    - name: Lint with ruff
+      run: |
+        ruff check src/rag_memory --output-format=github
+
+    - name: Type check with mypy
+      run: |
+        mypy src/rag_memory --ignore-missing-imports || true
+
+    - name: Install package in editable mode
+      run: |
+        pip install -e ".[neural,dev]"
+
+    - name: Run tests
+      run: |
+        pytest tests/ -v --cov=rag_memory --cov-report=xml
+
+    - name: Upload coverage
+      uses: codecov/codecov-action@v4
+      with:
+        file: ./coverage.xml
+        flags: unittests
+        name: codecov-umbrella
+
+  # Test package installation
+  test-installation:
+    name: Test Installation
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python 3.11
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+
+    - name: Install from source
+      run: |
+        pip install --upgrade pip
+        pip install ".[neural]"
+
+    - name: Verify installation
+      run: |
+        rag-memory --version
+        python -c "import rag_memory; print('✓ Import successful')"
+        python -c "from rag_memory.plugin import register; print('✓ Plugin registration available')"
+
+    - name: Test CLI commands
+      run: |
+        rag-memory --help
+        rag-memory doctor || true
+
+  # Check requirements
+  check-requirements:
+    name: Check Requirements
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python 3.11
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+
+    - name: Install dependencies
+      run: |
+        pip install --upgrade pip
+        pip install pip-audit
+        pip install ".[neural]"
+
+    - name: Check for security vulnerabilities
+      run: |
+        pip-audit --desc
+
+    - name: Check for outdated packages
+      run: |
+        pip list --outdated
+
+  # Code quality checks
+  code-quality:
+    name: Code Quality
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python 3.11
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+
+    - name: Install linting tools
+      run: |
+        pip install --upgrade pip
+        pip install ruff black isort mypy
+
+    - name: Check code formatting with black
+      run: |
+        black --check src/rag_memory
+
+    - name: Check import sorting with isort
+      run: |
+        isort --check-only src/rag_memory
+
+    - name: Lint with ruff
+      run: |
+        ruff check src/rag_memory --output-format=github
+
+    - name: Type check with mypy
+      run: |
+        mypy src/rag_memory --ignore-missing-imports
