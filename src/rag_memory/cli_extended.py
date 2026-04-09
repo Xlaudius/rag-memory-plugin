@@ -529,7 +529,10 @@ def install_neural(force: bool) -> None:
     console.print("[cyan]Step 3: Verifying installation...[/cyan]")
 
     try:
+        from sentence_transformers import SentenceTransformer
+
         # Test encoding
+        model = SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2")
         test_text = ["This is a test sentence."]
         embeddings = model.encode(test_text)
 
