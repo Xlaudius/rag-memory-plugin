@@ -72,16 +72,14 @@ jobs:
     - name: Lint with ruff
       run: |
         ruff check src/rag_memory --output-format=github
-      continue-on-error: true
 
     - name: Check code formatting with black
       run: |
         black --check src/rag_memory --target-version py311
-      continue-on-error: true
 
     - name: Type check with mypy
       run: |
-        mypy src/rag_memory --ignore-missing-imports || true
+        mypy src/rag_memory --ignore-missing-imports
 
     - name: Install package in editable mode
       run: |
@@ -130,7 +128,7 @@ jobs:
     - name: Test CLI commands
       run: |
         rag-memory --help
-        rag-memory doctor || true
+        rag-memory doctor
 
   # Check requirements and security
   check-requirements:
@@ -156,18 +154,18 @@ jobs:
     - name: Check for security vulnerabilities with pip-audit
       id: pip-audit
       run: |
-        pip-audit --desc --format=json > audit.json || true
+        pip-audit --desc --format=json > audit.json
         cat audit.json
 
     - name: Check for security vulnerabilities with safety
       run: |
-        safety check --json > safety-report.json || true
+        safety check --json > safety-report.json
         cat safety-report.json
 
     - name: Check for outdated packages
       id: outdated
       run: |
-        pip list --outdated --format=json > outdated.json || true
+        pip list --outdated --format=json > outdated.json
         cat outdated.json
 
     - name: Upload security reports
@@ -204,22 +202,18 @@ jobs:
     - name: Check code formatting with black
       run: |
         black --check src/rag_memory --target-version py311
-      continue-on-error: true
 
     - name: Check import sorting with isort
       run: |
         isort --check-only src/rag_memory
-      continue-on-error: true
 
     - name: Lint with ruff
       run: |
         ruff check src/rag_memory --output-format=github
-      continue-on-error: true
 
     - name: Type check with mypy
       run: |
         mypy src/rag_memory --ignore-missing-imports
-      continue-on-error: true
 
   # Build and verify package
   build-package:

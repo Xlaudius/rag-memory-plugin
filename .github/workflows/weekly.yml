@@ -45,11 +45,11 @@ jobs:
 
     - name: Run tests with coverage
       run: |
-        pytest tests/ -v --cov=rag_memory --cov-report=html --cov-report=term || true
+        pytest tests/ -v --cov=rag_memory --cov-report=html --cov-report=term
 
     - name: Run benchmark tests
       run: |
-        pytest tests/ -k benchmark --benchmark-only --benchmark-json=benchmark.json || true
+        pytest tests/ -k benchmark --benchmark-only --benchmark-json=benchmark.json
 
     - name: Upload benchmark results
       if: always()
@@ -150,17 +150,17 @@ jobs:
 
     - name: Count lines of code
       run: |
-        pygount --format=summary src/rag_memory || true
+        pygount --format=summary src/rag_memory
 
     - name: Code complexity check
       run: |
-        ruff check src/rag_memory --output-format=json > ruff-report.json || true
-        cat ruff-report.json | python3 -m json.tool || true
+        ruff check src/rag_memory --output-format=json > ruff-report.json
+        cat ruff-report.json | python3 -m json.tool
 
     - name: Security scan with bandit
       run: |
-        bandit -r src/rag_memory -f json -o bandit-report.json || true
-        cat bandit-report.json | python3 -m json.tool || true
+        bandit -r src/rag_memory -f json -o bandit-report.json
+        cat bandit-report.json | python3 -m json.tool
 
     - name: Upload quality reports
       if: always()
@@ -200,7 +200,7 @@ jobs:
 
     - name: Check for circular dependencies
       run: |
-        pipdeptree -p rag-memory-plugin --warn cycles || echo "No circular dependencies found"
+        pipdeptree -p rag-memory-plugin --warn cycles
 
     - name: Upload dependency tree
       uses: actions/upload-artifact@v4

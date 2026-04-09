@@ -62,7 +62,6 @@ jobs:
         pip install pip-audit
         pip-audit --desc --format=json > audit.json
         cat audit.json
-      continue-on-error: true
 
     - name: Upload security reports
       if: always()
@@ -183,8 +182,8 @@ jobs:
 
     - name: Verify installation
       run: |
-        source ~/.bashrc || true
-        rag-memory --version || echo "Need to source bashrc first"
+        source ~/.bashrc
+        rag-memory --version
         ~/.rag-memory/bin/rag-memory --version
         ~/.rag-memory/bin/rag-memory doctor
 
@@ -210,7 +209,7 @@ jobs:
 
     - name: Check README.md links
       run: |
-        find-links README.md || true
+        find-links README.md
 
     - name: Check installation script syntax
       run: |
@@ -219,7 +218,7 @@ jobs:
 
     - name: Check migration script syntax
       run: |
-        python3 -m py_compile migrate_from_rag_system.py || true
+        python3 -m py_compile migrate_from_rag_system.py
 
     - name: Validate README.md structure
       run: |
