@@ -231,11 +231,9 @@ class RAGCore:
             List of results with scores
         """
         import re
-        from collections import Counter
 
         # Tokenize query
         query_tokens = re.findall(r"\b\w+\b", query.lower())
-        query_freq = Counter(query_tokens)
 
         if not query_tokens:
             return []
