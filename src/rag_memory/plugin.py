@@ -156,7 +156,9 @@ def register(context: Any) -> None:
     if _config.get("auto_index_files", True):
         try:
             from rag_memory.core.cron_integration import (
-                register_session_hook, setup_cron_job)
+                register_session_hook,
+                setup_cron_job,
+            )
 
             # Register session start hook for file indexing
             register_session_hook(context)
@@ -214,10 +216,12 @@ def _on_pre_llm_call(event: dict[str, Any], context: Any) -> None:
             # Inject context into system message
             context_lines = []
             for r in results:
-                context_lines.extend([
-                    f"[Relevant Memory - {r.get('timestamp', '')}]",
-                    r.get("content", "")[:300],
-                ])
+                context_lines.extend(
+                    [
+                        f"[Relevant Memory - {r.get('timestamp', '')}]",
+                        r.get("content", "")[:300],
+                    ]
+                )
             context_block = "\n".join(context_lines)
 
             for msg in messages:

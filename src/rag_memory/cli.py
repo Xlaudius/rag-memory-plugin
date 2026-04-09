@@ -324,6 +324,7 @@ from .cli_extended import (  # noqa: E402
     setup_cli,
     status_cmd,
 )
+
 # Import Priority 3 commands (imported here to avoid circular imports)
 from .cli_priority3 import (  # noqa: E402
     backup_cli,

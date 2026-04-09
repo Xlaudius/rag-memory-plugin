@@ -456,8 +456,7 @@ def install_cli():
 @click.option("--force", is_flag=True, help="Reinstall even if already available")
 def install_neural(force: bool) -> None:
     """Install neural search dependencies and model."""
-    from rich.progress import (Progress,
-                               SpinnerColumn, TextColumn)
+    from rich.progress import Progress, SpinnerColumn, TextColumn
 
     rprint(Panel.fit("[bold cyan]Neural Search Installation", style="bold cyan"))
     print()
@@ -511,7 +510,9 @@ def install_neural(force: bool) -> None:
         ) as progress:
             progress.add_task("Downloading model...", total=None)
 
-            SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2")  # Download model
+            SentenceTransformer(
+                "sentence-transformers/all-MiniLM-L6-v2"
+            )  # Download model
 
         console.print("[green]✓ Model downloaded successfully[/green]")
     except Exception as e:
