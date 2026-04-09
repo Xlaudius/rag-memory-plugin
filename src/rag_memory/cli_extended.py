@@ -273,9 +273,9 @@ def setup(skip_prompts: bool, reinit: bool, sqlite_vec: bool, neural: bool) -> N
             TextColumn("[progress.description]{task.description}"),
             console=console,
         ) as progress:
-            task = progress.add_task("Initializing database...", total=None)
+            progress.add_task("Initializing database...", total=None)
 
-            rag = RAGCore(str(db_path))
+            RAGCore(str(db_path))  # Initialize and create database
 
         console.print("[green]✓ Database initialized[/green]")
     except Exception as e:
@@ -480,16 +480,16 @@ def install_neural(force: bool) -> None:
             TextColumn("[progress.description]{task.description}"),
             console=console,
         ) as progress:
-            task = progress.add_task("Installing package...", total=None)
+            progress.add_task("Installing package...", total=None)
 
-            result = subprocess.run(
+            subprocess.run(
                 ["pip", "install", "sentence-transformers"],
                 check=True,
                 capture_output=True,
                 text=True,
             )
 
-        console.print("[green]✓ sentence-transformers installed[/green]")
+            console.print("[green]✓ Package installed[/green]")
     except subprocess.CalledProcessError as e:
         console.print(f"[red]✗ Installation failed:[/red] {e.stderr}")
         console.print("\n[yellow]Fallback:[/yellow] TF-IDF search will be used")
@@ -510,9 +510,9 @@ def install_neural(force: bool) -> None:
             TextColumn("[progress.description]{task.description}"),
             console=console,
         ) as progress:
-            task = progress.add_task("Downloading model...", total=None)
+            progress.add_task("Downloading model...", total=None)
 
-            model = SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2")
+            SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2")  # Download model
 
         console.print("[green]✓ Model downloaded successfully[/green]")
     except Exception as e:
@@ -598,7 +598,7 @@ def config_edit() -> None:
         # Validate
         console.print("\n[cyan]Validating configuration...[/cyan]")
         try:
-            config = load_config()
+            load_config()  # Validate configuration file
             console.print("[green]✓ Configuration is valid[/green]")
         except Exception as e:
             console.print(f"[red]✗ Configuration error:[/red] {e}")
@@ -753,7 +753,7 @@ def status_cmd(json_output: bool, quiet: bool) -> None:
                 stats = rag.get_stats()
                 status_info["database"]["documents"] = stats.get("documents", 0)
                 status_info["database"]["namespaces"] = stats.get("namespaces", 0)
-            except:
+            except Exception:
                 pass
 
         console.print(json.dumps(status_info, indent=2))
@@ -815,7 +815,7 @@ def status_cmd(json_output: bool, quiet: bool) -> None:
                 rag = RAGCore(str(db_path))
                 stats = rag.get_stats()
                 console.print(f"  Terms: {stats.get('tfidf_terms', 0):,}")
-        except:
+        except Exception:
             pass
     else:
         console.print("[yellow]✗ Not available[/yellow]")
@@ -874,7 +874,7 @@ def reset_cmd(force: bool, no_backup: bool, keep_config: bool) -> None:
         console.print(f"  Documents: {stats.get('documents', 0)}")
         console.print(f"  Namespaces: {stats.get('namespaces', 0)}")
         print()
-    except:
+    except Exception:
         pass
 
     # Confirmation
@@ -890,13 +890,8 @@ def reset_cmd(force: bool, no_backup: bool, keep_config: bool) -> None:
 
     # Backup
     if not no_backup:
-        backup_dir = get_backup_dir()
-        backup_dir.mkdir(parents=True, exist_ok=True)
-
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        backup_path = backup_dir / f"rag_core_backup_{timestamp}.db"
-
-        console.print(f"\n[cyan]Creating backup:[/cyan] {backup_path}")
+        backup_path = db_path.parent / f"{db_path.stem}.backup"
+        console.print("[cyan]Creating backup...[/cyan]")
         shutil.copy2(db_path, backup_path)
         console.print("[green]✓ Backup created[/green]")
         print()
@@ -916,13 +911,13 @@ def reset_cmd(force: bool, no_backup: bool, keep_config: bool) -> None:
             TextColumn("[progress.description]{task.description}"),
             console=console,
         ) as progress:
-            task = progress.add_task("Initializing...", total=None)
+            progress.add_task("Initializing...", total=None)
 
             from rag_memory.core import RAGCore
 
-            rag = RAGCore(str(db_path))
+            RAGCore(str(db_path))  # Initialize database
 
-        console.print("[green]✓ Fresh database created[/green]")
+        console.print("[green]✓ Reset complete[/green]")
     except Exception as e:
         console.print(f"[red]✗ Failed to create database:[/red] {e}")
         sys.exit(1)
