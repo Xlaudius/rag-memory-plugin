@@ -212,10 +212,12 @@ def _on_pre_llm_call(event: dict[str, Any], context: Any) -> None:
 
         if results:
             # Inject context into system message
-            context_lines = [
-                f"[Relevant Memory - {r.get('timestamp', '')}]",
-                r.get("content", "")[:300],
-            ]
+            context_lines = []
+            for r in results:
+                context_lines.extend([
+                    f"[Relevant Memory - {r.get('timestamp', '')}]",
+                    r.get("content", "")[:300],
+                ])
             context_block = "\n".join(context_lines)
 
             for msg in messages:
