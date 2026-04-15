@@ -194,20 +194,16 @@ def validate_database() -> tuple[bool, str]:
 # ==============================================================================
 
 
-@click.group()
-def setup_cli():
-    """Setup commands."""
-    pass
-
-
-@setup_cli.command()
+@click.command("setup")
 @click.option(
     "--skip-prompts", is_flag=True, help="Run non-interactively with defaults"
 )
 @click.option("--reinit", is_flag=True, help="Force reinitialize database")
 @click.option("--sqlite-vec", is_flag=True, help="Install sqlite-vec only")
 @click.option("--neural", is_flag=True, help="Install neural model only")
-def setup(skip_prompts: bool, reinit: bool, sqlite_vec: bool, neural: bool) -> None:
+def setup_cli(
+    skip_prompts: bool, reinit: bool, sqlite_vec: bool, neural: bool
+):
     """Interactive setup wizard for RAG Memory plugin."""
     from rich.progress import Progress, SpinnerColumn, TextColumn
 

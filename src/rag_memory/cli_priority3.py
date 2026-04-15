@@ -10,6 +10,7 @@ Provides advanced commands:
 from __future__ import annotations
 
 import json
+import os
 import shutil
 import sqlite3
 import sys
@@ -818,7 +819,14 @@ def recover_cmd(backup_corrupted: bool, from_backup: Optional[str]) -> None:
 @click.option("--namespace", default="indexed", help="Namespace for indexed documents")
 @click.option("--chunk-size", default=500, help="Maximum characters per chunk")
 @click.option("--force", is_flag=True, help="Re-index even if already indexed")
-def index_cmd(path: str, namespace: str, chunk_size: int, force: bool) -> None:
+@click.option(
+    "--include-hidden",
+    is_flag=True,
+    help="Include hidden files and directories (except excluded secrets)",
+)
+def index_cmd(
+    path: str, namespace: str, chunk_size: int, force: bool, include_hidden: bool
+) -> None:
     """Index a file or directory into the RAG database.
 
     PATH: Path to file or directory to index
@@ -859,13 +867,113 @@ def index_cmd(path: str, namespace: str, chunk_size: int, force: bool) -> None:
 
     # Collect files to index
     files_to_index = []
+    excluded_suffixes = {
+        ".png",
+        ".jpg",
+        ".jpeg",
+        ".gif",
+        ".webp",
+        ".svg",
+        ".ico",
+        ".pdf",
+        ".zip",
+        ".tar",
+        ".gz",
+        ".tgz",
+        ".bz2",
+        ".xz",
+        ".7z",
+        ".rar",
+        ".db",
+        ".sqlite",
+        ".sqlite3",
+        ".bin",
+        ".exe",
+        ".dll",
+        ".so",
+        ".dylib",
+        ".class",
+        ".pyc",
+        ".pyo",
+        ".woff",
+        ".woff2",
+        ".ttf",
+        ".otf",
+        ".eot",
+        ".mp3",
+        ".mp4",
+        ".mov",
+        ".avi",
+        ".mkv",
+        ".wav",
+        ".flac",
+    }
+    excluded_secret_files = {
+        ".env",
+        ".env.local",
+        ".env.development",
+        ".env.test",
+        ".env.production",
+        ".env.staging",
+    }
+    excluded_dirs = {
+        ".git",
+        ".hg",
+        ".svn",
+        ".venv",
+        "venv",
+        "env",
+        "__pycache__",
+        ".pytest_cache",
+        ".mypy_cache",
+        ".ruff_cache",
+        ".tox",
+        ".nox",
+        "node_modules",
+        "dist",
+        "build",
+        "target",
+        ".next",
+        ".nuxt",
+        ".cache",
+    }
+
+    def should_index_file(file_path: Path) -> bool:
+        """Return True when a file is safe and useful to index."""
+        name_lower = file_path.name.lower()
+
+        # Allow templates/examples like .env.example and .env.example.local.
+        if name_lower.startswith(".env.example"):
+            return True
+
+        # Skip hidden files unless explicitly requested.
+        if not include_hidden and file_path.name.startswith("."):
+            return False
+
+        # Exclude secret environment files (e.g. .env, .env.local, .env.production).
+        if name_lower in excluded_secret_files or (
+            name_lower.startswith(".env.") and not name_lower.startswith(".env.example")
+        ):
+            return False
+
+        return file_path.suffix.lower() not in excluded_suffixes
 
     if target_path.is_file():
-        files_to_index = [target_path]
+        if should_index_file(target_path):
+            files_to_index = [target_path]
     elif target_path.is_dir():
-        # Find all markdown and text files
-        for ext in ["*.md", "*.txt", "*.rst", "*.py", "*.js", "*.html", "*.css"]:
-            files_to_index.extend(target_path.rglob(ext))
+        # Recursively walk while pruning noisy directories (.venv, __pycache__, etc.)
+        for root, dirs, files in os.walk(target_path):
+            dirs[:] = [
+                d
+                for d in dirs
+                if d not in excluded_dirs and (include_hidden or not d.startswith("."))
+            ]
+            root_path = Path(root)
+            for file_name in files:
+                file_path = root_path / file_name
+                if should_index_file(file_path):
+                    files_to_index.append(file_path)
 
     if not files_to_index:
         console.print("[yellow]⚠ No files found to index[/yellow]")
@@ -877,11 +985,16 @@ def index_cmd(path: str, namespace: str, chunk_size: int, force: bool) -> None:
     # Index files
     from rag_memory.core.file_indexing import FileIndexer
 
-    indexer = FileIndexer(str(db_path))
+    indexer_home = target_path if target_path.is_dir() else target_path.parent
+    indexer = FileIndexer(rag, hermes_home=indexer_home)
+    if not force:
+        # Reuse FileIndexer dedupe based on stored content hashes.
+        indexer._load_existing_hashes()
 
     indexed = 0
     skipped = 0
     errors = []
+    skipped_files: list[tuple[Path, str]] = []
 
     with Progress(
         SpinnerColumn(),
@@ -893,45 +1006,30 @@ def index_cmd(path: str, namespace: str, chunk_size: int, force: bool) -> None:
 
         for file_path in files_to_index:
             try:
-                # Read file
+                # Skip empty files quickly
                 with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
                     content = f.read()
-
                 if not content.strip():
                     skipped += 1
+                    skipped_files.append((file_path, "empty file"))
                     progress.update(task, advance=1)
                     continue
 
-                # Check if already indexed
-                if not force:
-                    import hashlib
-
-                    file_hash = hashlib.md5(content.encode()).hexdigest()
-
-                    # Check if document with this hash exists
-                    existing = rag.search(
-                        f"hash:{file_hash}", namespace=namespace, limit=1
-                    )
-                    if existing:
-                        skipped += 1
-                        progress.update(task, advance=1)
-                        continue
-
-                # Index the file
-                indexer.index_file(
-                    file_path=str(file_path),
-                    content=content,
+                prev_error_count = len(indexer.stats["errors"])
+                chunks_added = indexer.index_file(
+                    file_path=file_path,
                     namespace=namespace,
                     chunk_size=chunk_size,
-                    metadata={
-                        "source": "file_index",
-                        "file_path": str(file_path),
-                        "file_name": file_path.name,
-                        "indexed_at": datetime.now().isoformat(),
-                    },
                 )
+                new_error_count = len(indexer.stats["errors"])
 
-                indexed += 1
+                if new_error_count > prev_error_count:
+                    errors.append(indexer.stats["errors"][-1])
+                elif chunks_added > 0:
+                    indexed += 1
+                else:
+                    skipped += 1
+                    skipped_files.append((file_path, "already indexed / no new chunks"))
 
             except Exception as e:
                 errors.append(f"{file_path.name}: {str(e)}")
@@ -952,6 +1050,26 @@ def index_cmd(path: str, namespace: str, chunk_size: int, force: bool) -> None:
             console.print(f"  [red]✗[/red] {error}")
         if len(errors) > 10:
             console.print(f"  ... and {len(errors) - 10} more")
+
+    if skipped_files and Confirm.ask(
+        "\nView skipped files?", default=False
+    ):
+        page_size = 15
+        total = len(skipped_files)
+        page_num = 1
+
+        for start in range(0, total, page_size):
+            end = min(start + page_size, total)
+            page = skipped_files[start:end]
+            console.print(
+                f"\n[cyan]Skipped files (page {page_num}, {start + 1}-{end} of {total}):[/cyan]"
+            )
+            for i, (skipped_path, reason) in enumerate(page, start=start + 1):
+                console.print(f"  {i:>4}. {skipped_path} [dim]({reason})[/dim]")
+
+            if end < total and not Confirm.ask("Show next page?", default=True):
+                break
+            page_num += 1
 
 
 # Export commands for main CLI
